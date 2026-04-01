@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  limits-monitor:
+    build: .
+    container_name: limits-monitor
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      - CHECK_INTERVAL_MINUTES=${CHECK_INTERVAL_MINUTES:-15}
+      
+      # API Keys
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - CLAUDE_API_KEY=${CLAUDE_API_KEY:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - PERPLEXITY_API_KEY=${PERPLEXITY_API_KEY:-}
+      
+      # Web / Cookie tokens (if scraping web instead of API)
+      - CURSOR_TOKEN=${CURSOR_TOKEN:-}
+      - CLAUDE_SESSION_KEY=${CLAUDE_SESSION_KEY:-}
+      
+    volumes:
+      # Mount state.json so alert states persist across reboots
+      - ./data:/app/data

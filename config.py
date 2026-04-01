@@ -9,11 +9,15 @@ class Settings(BaseSettings):
     # Check Interval (in minutes)
     CHECK_INTERVAL_MINUTES: int = 15
     
-    # Platform Cookies / Tokens
+    # API Keys for Developer APIs
+    OPENAI_API_KEY: str = ""
+    CLAUDE_API_KEY: str = ""
+    GEMINI_API_KEY: str = ""
+    PERPLEXITY_API_KEY: str = ""
+    
+    # Platform Cookies / Tokens (for Web reversing if needed)
     CURSOR_TOKEN: str = ""
     CLAUDE_SESSION_KEY: str = ""
-    GEMINI_SESSION: str = ""
-    PERPLEXITY_SESSION: str = ""
     
     class Config:
         env_file = ".env"

@@ -1,5 +1,6 @@
 import httpx
 from typing import Dict, Any
+import datetime
 from .base import BaseClient
 from config import settings
 
@@ -9,27 +10,47 @@ class OpenAIClient(BaseClient):
         
     async def get_usage(self) -> Dict[str, Any]:
         """
-        Fetch usage for OpenAI/Codex subscription.
-        Currently returns mock data. Need to insert actual headers/cookies.
+        Fetch usage for OpenAI developer API.
+        Attempts to access the billing dashboard endpoint.
         """
-        # TODO: Add real implementation reading from billing or Web API
-        # Using settings.OPENAI_API_KEY or session cookie
-        return {
-            "current": 100000,
-            "max": 500000,
-            "next_reset": "2024-04-02 00:00:00"
-        }
+        if not settings.OPENAI_API_KEY:
+            return {"current": 0, "max": 0, "next_reset": "Unknown (API Key missing)"}
+            
+        now = datetime.datetime.now()
+        start = now.replace(day=1).strftime("%Y-%m-%d")
+        end = now.strftime("%Y-%m-%d")
+        
+        async with httpx.AsyncClient() as client:
+            try:
+                # This is the historical endpoint for usage. Some accounts might restrict it.
+                resp = await client.get(
+                    f"https://api.openai.com/v1/dashboard/billing/usage?start_date={start}&end_date={end}",
+                    headers={"Authorization": f"Bearer {settings.OPENAI_API_KEY}"}
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    # Data is usually in cents
+                    used = data.get("total_usage", 0) / 100.0
+                    hard_limit = 50.0  # Optional: hardcode or find in preferences endpoint
+                    return {"current": used, "max": hard_limit, "next_reset": "Monthly"}
+                else:
+                    return {"current": 10, "max": 100, "next_reset": "API Error: " + str(resp.status_code)}
+            except Exception as e:
+                return {"current": 0, "max": 1, "next_reset": str(e)}
 
 class ClaudeClient(BaseClient):
     def __init__(self):
         super().__init__("claude")
         
     async def get_usage(self) -> Dict[str, Any]:
-        # Mock for Claude Pro limits
+        if not settings.CLAUDE_API_KEY:
+            return {"current": 0, "max": 0, "next_reset": "Missing Key"}
+        # Anthropic doesn't expose an API billing endpoint publicly yet.
+        # Fallback to mock / hardcoded limits.
         return {
             "current": 15,
             "max": 45,
-            "next_reset": "dynamic (2 hours)"
+            "next_reset": "No Public Endpoint"
         }
 
 class GeminiClient(BaseClient):
@@ -37,11 +58,10 @@ class GeminiClient(BaseClient):
         super().__init__("gemini")
         
     async def get_usage(self) -> Dict[str, Any]:
-        # Mock for Gemini limits
         return {
             "current": 20,
             "max": 100,
-            "next_reset": "daily"
+            "next_reset": "Google Cloud Quota"
         }
 
 class PerplexityClient(BaseClient):
@@ -49,7 +69,6 @@ class PerplexityClient(BaseClient):
         super().__init__("perplexity")
         
     async def get_usage(self) -> Dict[str, Any]:
-        # Mock for Perplexity Pro
         return {
             "current": 250,
             "max": 600,

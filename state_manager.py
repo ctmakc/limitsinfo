@@ -2,7 +2,8 @@ import json
 import os
 from typing import Dict, Any
 
-STATE_FILE = "state.json"
+STATE_FILE = "data/state.json"
+os.makedirs("data", exist_ok=True)
 
 class StateManager:
     def __init__(self, filepath: str = STATE_FILE):
@@ -25,7 +26,7 @@ class StateManager:
     def get_limit(self, service: str) -> Dict[str, Any]:
         return self._state.get(service, {})
 
-    def update_limit(self, service: str, current: int, max_limit: int, next_reset: str = None):
+    def update_limit(self, service: str, current: float, max_limit: float, next_reset: str | None = None):
         """
         Updates the usage statistics for a given service.
         Returns the previous state to compare triggers.
