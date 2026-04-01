@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Limits Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="background-animation"></div>
+    <div class="container">
+        <header>
+            <h1>AI Limits Monitor</h1>
+            <p>Real-time usage tracking</p>
+        </header>
+        <main id="dashboard" class="grid-container">
+            <div class="loader">Fetching limits...</div>
+        </main>
+    </div>
+    
+    <script>
+        async function fetchLimits() {
+            try {
+                const response = await fetch('/api/limits');
+                const data = await response.json();
+                renderCards(data.services);
+            } catch (error) {
+                document.getElementById('dashboard').innerHTML = '<div class="loader" style="color:#ef4444;">Failed to load data</div>';
+            }
+        }
+
+        function renderCards(services) {
+            const dashboard = document.getElementById('dashboard');
+            dashboard.innerHTML = '';
+            
+            services.forEach(service => {
+                const percentage = Math.min((service.current / service.max) * 100, 100);
+                // Highlight danger if < 20% remaining? No, the user wants 50-25% alarms. Usage means current is AMOUNT USED.
+                // Or does "current" mean REMAINING? 
+                // Let's assume current = usage, max = limit.
+                const colorClass = percentage > 80 ? 'danger' : percentage > 50 ? 'warning' : 'safe';
+                
+                const card = document.createElement('div');
+                card.className = 'glass-card';
+                card.innerHTML = `
+                    <div class="card-header">
+                        <h2>${service.name || service.service.charAt(0).toUpperCase() + service.service.slice(1)}</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="progress-bar">
+                            <div class="progress-fill ${colorClass}" style="width: ${percentage}%"></div>
+                        </div>
+                        <div class="stats">
+                            <span>${service.current.toLocaleString()} / ${service.max.toLocaleString()}</span>
+                            <span class="percentage">${percentage.toFixed(1)}%</span>
+                        </div>
+                        <div class="reset-time">Resets: ${service.next_reset}</div>
+                    </div>
+                `;
+                dashboard.appendChild(card);
+            });
+        }
+
+        fetchLimits();
+        setInterval(fetchLimits, 60000); // 1 minute polling
+    </script>
+</body>
+</html>
