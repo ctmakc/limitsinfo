@@ -4,7 +4,7 @@ import traceback
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import Body, FastAPI
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -112,6 +112,75 @@ async def get_limits():
             {"service": "perplexity", "name": "Perplexity", **state.get_limit("perplexity")},
         ]
     }
+
+
+@app.get("/api/widget")
+async def get_widget_data():
+    """Flattened API specifically for Android KWGT/Tasker integration"""
+    data = {}
+    for cl in ["openai", "claude", "gemini", "perplexity"]:
+        limit = state.get_limit(cl)
+        curr = limit.get("current", 0)
+        mx = limit.get("max", 0)
+        pct = int(100 - (curr / mx * 100)) if mx > 0 else 0
+        data[f"{cl}_remain"] = f"{pct}%"
+        data[f"{cl}_text"] = f"{curr}/{mx}"
+    return data
+
+
+@app.get("/api/widget_ui", response_class=HTMLResponse)
+async def get_widget_ui():
+    """Beautiful HTML Web Widget for Android Web Widget apps"""
+    html_content = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <style>
+            body { 
+                margin: 0; padding: 8px; 
+                background: transparent; color: #f8fafc; 
+                font-family: sans-serif; 
+                display: flex; flex-direction: column; gap: 6px;
+                overflow: hidden;
+            }
+            .card {
+                background: rgba(15, 23, 42, 0.7);
+                backdrop-filter: blur(10px);
+                border: 1px solid rgba(255,255,255,0.1);
+                border-radius: 12px; padding: 10px 12px;
+                display: flex; justify-content: space-between; align-items: center;
+            }
+            .name { font-weight: bold; font-size: 15px; margin-bottom: 2px; }
+            .stats { font-size: 11px; color: #94a3b8; }
+            .pct { font-size: 16px; font-weight: bold; }
+        </style>
+        <script>
+            setInterval(() => window.location.reload(), 60000);
+        </script>
+    </head>
+    <body>
+    """
+    for cl in ["openai", "claude", "gemini", "perplexity"]:
+        limit = state.get_limit(cl)
+        curr = limit.get("current", 0)
+        mx = limit.get("max", 0)
+        if mx <= 0:
+            continue
+        pct = int(100 - (curr / mx * 100))
+        name = cl.capitalize()
+        color = "#ef4444" if pct <= 25 else ("#f59e0b" if pct <= 50 else "#10b981")
+        html_content += f"""
+        <div class="card">
+            <div>
+                <div class="name">{name}</div>
+                <div class="stats">{curr:.1f} / {mx:.1f} used</div>
+            </div>
+            <div class="pct" style="color: {color}">{pct}%</div>
+        </div>
+        """
+    html_content += "</body></html>"
+    return html_content
 
 
 class SettingsModel(BaseModel):
