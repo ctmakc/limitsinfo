@@ -1,8 +1,27 @@
 {
     "python.defaultInterpreterPath": "${workspaceFolder}\\venv\\Scripts\\python.exe",
     "python.terminal.activateEnvironment": true,
-    "terminal.integrated.defaultProfile.windows": "Command Prompt",
+    "terminal.integrated.profiles.windows": {
+        "Antigravity PowerShell": {
+            "path": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+            "args": [
+                "-NoLogo",
+                "-NoProfile"
+            ]
+        }
+    },
+    "terminal.integrated.defaultProfile.windows": "Antigravity PowerShell",
+    "terminal.integrated.automationProfile.windows": {
+        "path": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+        "args": [
+            "-NoLogo",
+            "-NoProfile"
+        ]
+    },
+    "terminal.integrated.enablePersistentSessions": false,
+    "terminal.integrated.shellIntegration.enabled": true,
     "terminal.integrated.cwd": "${workspaceFolder}",
+    "chat.tools.terminal.terminalProfile.windows": "Antigravity PowerShell",
     "python.analysis.extraPaths": [
         "${workspaceFolder}"
     ]
