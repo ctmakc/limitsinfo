@@ -2,7 +2,7 @@ import httpx
 from typing import Dict, Any
 import datetime
 from .base import BaseClient
-from config import settings
+from settings_manager import secure_settings
 
 class OpenAIClient(BaseClient):
     def __init__(self):
@@ -13,7 +13,8 @@ class OpenAIClient(BaseClient):
         Fetch usage for OpenAI developer API.
         Attempts to access the billing dashboard endpoint.
         """
-        if not settings.OPENAI_API_KEY:
+        api_key = secure_settings.get("OPENAI_API_KEY")
+        if not api_key:
             return {"current": 0, "max": 0, "next_reset": "Unknown (API Key missing)"}
             
         now = datetime.datetime.now()
@@ -25,7 +26,7 @@ class OpenAIClient(BaseClient):
                 # This is the historical endpoint for usage. Some accounts might restrict it.
                 resp = await client.get(
                     f"https://api.openai.com/v1/dashboard/billing/usage?start_date={start}&end_date={end}",
-                    headers={"Authorization": f"Bearer {settings.OPENAI_API_KEY}"}
+                    headers={"Authorization": f"Bearer {api_key}"}
                 )
                 if resp.status_code == 200:
                     data = resp.json()
@@ -43,7 +44,8 @@ class ClaudeClient(BaseClient):
         super().__init__("claude")
         
     async def get_usage(self) -> Dict[str, Any]:
-        if not settings.CLAUDE_API_KEY:
+        session_key = secure_settings.get("CLAUDE_SESSION_KEY")
+        if not session_key:
             return {"current": 0, "max": 0, "next_reset": "Missing Key"}
         # Anthropic doesn't expose an API billing endpoint publicly yet.
         # Fallback to mock / hardcoded limits.

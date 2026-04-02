@@ -11,12 +11,47 @@
     <div class="background-animation"></div>
     <div class="container">
         <header>
-            <h1>AI Limits Monitor</h1>
-            <p>Real-time usage tracking</p>
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div>
+                    <h1>AI Limits Monitor</h1>
+                    <p>Real-time usage tracking</p>
+                </div>
+                <button class="settings-btn" onclick="openSettings()">⚙️ Settings</button>
+            </div>
         </header>
         <main id="dashboard" class="grid-container">
             <div class="loader">Fetching limits...</div>
         </main>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-content glass-card">
+            <span class="close-btn" onclick="closeSettings()">&times;</span>
+            <h2>Configuration</h2>
+            <p style="margin-bottom: 1.5rem; color: var(--text-muted); font-size: 0.9rem;">
+                Set your API and Session tokens here. They are stored encrypted locally.
+            </p>
+            <form id="settingsForm" onsubmit="saveSettings(event)">
+                <div class="form-group">
+                    <label>OpenAI API Key (or Dashboard Key)</label>
+                    <input type="password" id="OPENAI_API_KEY" placeholder="Paste key to update...">
+                </div>
+                <div class="form-group">
+                    <label>Claude Session Key</label>
+                    <input type="password" id="CLAUDE_SESSION_KEY" placeholder="Paste key to update...">
+                </div>
+                <div class="form-group">
+                    <label>Gemini API Key</label>
+                    <input type="password" id="GEMINI_API_KEY" placeholder="Paste key to update...">
+                </div>
+                <div class="form-group">
+                    <label>Perplexity API Key</label>
+                    <input type="password" id="PERPLEXITY_API_KEY" placeholder="Paste key to update...">
+                </div>
+                <button type="submit" class="save-btn" id="saveBtn">Save Settings</button>
+            </form>
+        </div>
     </div>
     
     <script>
@@ -35,11 +70,30 @@
             dashboard.innerHTML = '';
             
             services.forEach(service => {
+                if (service.max === undefined || service.max <= 0) {
+                    const card = document.createElement('div');
+                    card.className = 'glass-card';
+                    card.innerHTML = `
+                        <div class="card-header">
+                            <h2>${service.name || service.service.charAt(0).toUpperCase() + service.service.slice(1)}</h2>
+                        </div>
+                        <div class="card-body">
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 0%; background: rgba(255,255,255,0.1)"></div>
+                            </div>
+                            <div class="stats">
+                                <span style="color:var(--text-muted)">Not Configured</span>
+                            </div>
+                            <div class="reset-time" style="color:var(--danger)">⚠ ${service.next_reset || "API Key Missing"}</div>
+                        </div>
+                    `;
+                    dashboard.appendChild(card);
+                    return;
+                }
+                
                 const percentage = Math.min((service.current / service.max) * 100, 100);
-                // Highlight danger if < 20% remaining? No, the user wants 50-25% alarms. Usage means current is AMOUNT USED.
-                // Or does "current" mean REMAINING? 
-                // Let's assume current = usage, max = limit.
                 const colorClass = percentage > 80 ? 'danger' : percentage > 50 ? 'warning' : 'safe';
+
                 
                 const card = document.createElement('div');
                 card.className = 'glass-card';
@@ -60,6 +114,67 @@
                 `;
                 dashboard.appendChild(card);
             });
+        }
+
+        async function openSettings() {
+            document.getElementById('settingsModal').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+            
+            // Fetch masked values
+            try {
+                const res = await fetch('/api/settings');
+                const status = await res.json();
+                
+                ['OPENAI_API_KEY', 'CLAUDE_SESSION_KEY', 'GEMINI_API_KEY', 'PERPLEXITY_API_KEY'].forEach(k => {
+                    const inp = document.getElementById(k);
+                    inp.value = '';
+                    inp.placeholder = status[k] ? '•••••••••••••••• (Configured)' : 'Paste key to set...';
+                });
+            } catch (e) {
+                console.error("Failed to load settings status", e);
+            }
+        }
+
+        function closeSettings() {
+            document.getElementById('settingsModal').style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+
+        async function saveSettings(e) {
+            e.preventDefault();
+            const btn = document.getElementById('saveBtn');
+            btn.textContent = 'Saving...';
+            
+            const payload = {};
+            ['OPENAI_API_KEY', 'CLAUDE_SESSION_KEY', 'GEMINI_API_KEY', 'PERPLEXITY_API_KEY'].forEach(k => {
+                const val = document.getElementById(k).value;
+                if (val) payload[k] = val;
+            });
+            
+            try {
+                await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                btn.textContent = 'Saved!';
+                setTimeout(() => {
+                    closeSettings();
+                    btn.textContent = 'Save Settings';
+                    fetchLimits();
+                }, 1000);
+            } catch (error) {
+                btn.textContent = 'Error!';
+                setTimeout(() => { btn.textContent = 'Save Settings'; }, 2000);
+            }
+        }
+
+        // Close modal if clicked outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('settingsModal');
+            if (event.target === modal) {
+                closeSettings();
+            }
         }
 
         fetchLimits();
